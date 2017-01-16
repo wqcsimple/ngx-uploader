@@ -1,11 +1,12 @@
-import { EventEmitter, Injectable, Provider } from '@angular/core';
-import { NgUploaderOptions } from '../classes/ng-uploader-options.class';
-import { UploadedFile } from '../classes/uploaded-file.class';
+import {EventEmitter, Injectable, Provider} from '@angular/core';
+import {NgUploaderOptions} from '../classes/ng-uploader-options.class';
+import {UploadedFile} from '../classes/uploaded-file.class';
 
 @Injectable()
 export class NgUploaderService {
   _queue: any[];
   _emitter: EventEmitter<any>;
+  _queueEmitter: EventEmitter<any>;
   _previewEmitter: EventEmitter<any>;
   _beforeEmitter: EventEmitter<any>;
   opts: NgUploaderOptions;
@@ -13,6 +14,7 @@ export class NgUploaderService {
   constructor() {
     this._queue = [];
     this._emitter = new EventEmitter<any>();
+    this._queueEmitter = new EventEmitter<any>();
     this._previewEmitter = new EventEmitter<any>();
     this._beforeEmitter = new EventEmitter<any>();
   }
@@ -23,7 +25,9 @@ export class NgUploaderService {
 
   uploadFilesInQueue(): void {
     this._queue.forEach((file) => {
-      if (file.uploading) { return; }
+      if (file.uploading) {
+        return;
+      }
       this.uploadFile(file);
     });
   };
@@ -38,9 +42,9 @@ export class NgUploaderService {
     });
 
     let uploadingFile = new UploadedFile(
-      this.generateRandomIndex(),
-      file.name,
-      file.size
+        this.generateRandomIndex(),
+        file.name,
+        file.size
     );
 
     let queueIndex = this._queue.indexOf(file);
@@ -118,6 +122,11 @@ export class NgUploaderService {
 
     this._beforeEmitter.emit(uploadingFile);
 
+    // 监听取消事件
+    uploadingFile._cancelEmitter.subscribe((data: any) => {
+      xhr.abort();
+    })
+
     if (!uploadingFile.abort) {
       xhr.send(form);
     } else {
@@ -138,14 +147,15 @@ export class NgUploaderService {
     }
 
     if (this.opts.autoUpload) {
+      this._queueEmitter.emit(this._queue);
       this.uploadFilesInQueue();
     }
   }
 
-  createFileUrl(file: File){
+  createFileUrl(file: File) {
     let reader: FileReader = new FileReader();
     reader.addEventListener('load', () => {
-        this._previewEmitter.emit(reader.result);
+      this._previewEmitter.emit(reader.result);
     });
     reader.readAsDataURL(file);
   }
@@ -163,7 +173,9 @@ export class NgUploaderService {
   }
 
   inQueue(file: any): boolean {
-    let fileInQueue = this._queue.filter((f) => { return f === file; });
+    let fileInQueue = this._queue.filter((f) => {
+      return f === file;
+    });
     return fileInQueue.length ? true : false;
   }
 
