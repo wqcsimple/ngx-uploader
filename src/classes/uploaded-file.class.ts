@@ -1,3 +1,4 @@
+import {EventEmitter} from "@angular/core";
 export class UploadedFile {
   id: string;
   status: number;
@@ -13,6 +14,7 @@ export class UploadedFile {
   endTime: number;
   speedAverage: number;
   speedAverageHumanized: string|null;
+  _cancelEmitter: UploadedFile<any>;
 
   constructor(id: string, originalName: string, size: number) {
     this.id = id;
@@ -46,6 +48,10 @@ export class UploadedFile {
   setAbort(): void {
     this.abort = true;
     this.done = true;
+  }
+
+  cancel(): void {
+    this._cancelEmitter.emit(this)
   }
 
   onFinished(status: number, statusText: string, response: string): void {
