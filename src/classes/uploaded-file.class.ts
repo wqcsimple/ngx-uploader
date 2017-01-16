@@ -14,7 +14,7 @@ export class UploadedFile {
   endTime: number;
   speedAverage: number;
   speedAverageHumanized: string|null;
-  _cancelEmitter: UploadedFile<any>;
+  _cancelEmitter: EventEmitter<any>;
 
   constructor(id: string, originalName: string, size: number) {
     this.id = id;
