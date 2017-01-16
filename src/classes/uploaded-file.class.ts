@@ -34,6 +34,7 @@ export class UploadedFile {
     this.endTime = 0;
     this.speedAverage = 0;
     this.speedAverageHumanized = null;
+    this._cancelEmitter = new EventEmitter<any>();
   }
 
   setProgress(progress: Object): void {
