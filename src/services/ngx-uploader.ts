@@ -54,6 +54,7 @@ export class NgUploaderService {
     let speed = 0;
     let speedHumanized: string|null = null;
 
+    let staticSpeed = "0KB/S";
     xhr.upload.onprogress = (e: ProgressEvent) => {
       if (e.lengthComputable) {
         if (this.opts.calculateSpeed) {
@@ -64,12 +65,18 @@ export class NgUploaderService {
           speedHumanized = this.humanizeBytes(speed);
         }
 
+        if (speedHumanized != '0 Byte') {
+          staticSpeed = speedHumanized;
+        }
+
         let percent = Math.round(e.loaded / e.total * 100);
+
         if (speed === 0) {
           uploadingFile.setProgress({
             total: e.total,
             loaded: e.loaded,
-            percent: percent
+            percent: percent,
+            speedHumanized: staticSpeed
           });
         } else {
           uploadingFile.setProgress({
@@ -77,7 +84,7 @@ export class NgUploaderService {
             loaded: e.loaded,
             percent: percent,
             speed: speed,
-            speedHumanized: speedHumanized
+            speedHumanized: staticSpeed
           });
         }
 
