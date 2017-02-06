@@ -55,7 +55,7 @@ export class NgUploaderService {
     let speed = 0;
     let speedHumanized: string|null = null;
 
-    let staticSpeed = "0KB/S";
+    let staticSpeed:string|null = "0KB/S";
     xhr.upload.onprogress = (e: ProgressEvent) => {
       if (e.lengthComputable) {
         if (this.opts.calculateSpeed) {
