@@ -4,205 +4,216 @@ import {UploadedFile} from '../classes/uploaded-file.class';
 
 @Injectable()
 export class NgUploaderService {
-  _queue: any[];
-  _emitter: EventEmitter<any>;
-  _queueEmitter: EventEmitter<any>;
-  _previewEmitter: EventEmitter<any>;
-  _beforeEmitter: EventEmitter<any>;
-  opts: NgUploaderOptions;
+    _queue: any[];
+    _emitter: EventEmitter<any>;
+    _queueEmitter: EventEmitter<any>;
+    _previewEmitter: EventEmitter<any>;
+    _beforeEmitter: EventEmitter<any>;
+    opts: NgUploaderOptions;
 
-  constructor() {
-    this._queue = [];
-    this._emitter = new EventEmitter<any>();
-    this._queueEmitter = new EventEmitter<any>();
-    this._previewEmitter = new EventEmitter<any>();
-    this._beforeEmitter = new EventEmitter<any>();
-  }
+    constructor() {
+        this._queue = [];
+        this._emitter = new EventEmitter<any>();
+        this._queueEmitter = new EventEmitter<any>();
+        this._previewEmitter = new EventEmitter<any>();
+        this._beforeEmitter = new EventEmitter<any>();
+    }
 
-  setOptions(opts: NgUploaderOptions) {
-    this.opts = opts;
-  }
+    setOptions(opts: NgUploaderOptions) {
+        this.opts = opts;
+    }
 
-  uploadFilesInQueue(): void {
-    this._queue.forEach((file) => {
-      if (file.uploading) {
-        return;
-      }
-      this.uploadFile(file);
-    });
-  };
+    uploadFilesInQueue(): void {
+        this._queue.forEach((file) => {
+            if (file.uploading) {
+                return;
+            }
+            this.uploadFile(file);
+        });
+    };
 
-  uploadFile(file: any): void {
-    let xhr = new XMLHttpRequest();
-    let form = new FormData();
+    uploadFile(file: File): void {
+        let xhr = new XMLHttpRequest();
+        let payload: FormData | File;
 
-    Object.keys(this.opts.data).forEach(k => {
-      form.append(k, this.opts.data[k]);
-    });
+        if (this.opts.multipart) {
+            let form = new FormData();
+            Object.keys(this.opts.data).forEach(k => {
+                form.append(k, this.opts.data[k]);
+            });
 
-    form.append(this.opts.fieldName, file, file.name);
-
-    let uploadingFile = new UploadedFile(
-        this.generateRandomIndex(),
-        file.name,
-        file.size
-    );
-
-    let queueIndex = this._queue.indexOf(file);
-
-    let time: number = new Date().getTime();
-    let load = 0;
-    let speed = 0;
-    let speedHumanized: string|null = null;
-
-    let staticSpeed:string|null = "0KB/S";
-    xhr.upload.onprogress = (e: ProgressEvent) => {
-      if (e.lengthComputable) {
-        if (this.opts.calculateSpeed) {
-          time = new Date().getTime() - time;
-          load = e.loaded - load;
-          speed = load / time * 1000;
-          speed = parseInt(<any>speed, 10);
-          speedHumanized = this.humanizeBytes(speed);
-        }
-
-        if (speedHumanized != '0 Byte') {
-          staticSpeed = speedHumanized;
-        }
-
-        let percent = Math.round(e.loaded / e.total * 100);
-
-        if (speed === 0) {
-          uploadingFile.setProgress({
-            total: e.total,
-            loaded: e.loaded,
-            percent: percent,
-            speedHumanized: staticSpeed
-          });
+            form.append(this.opts.fieldName, file, file.name);
+            payload = form;
         } else {
-          uploadingFile.setProgress({
-            total: e.total,
-            loaded: e.loaded,
-            percent: percent,
-            speed: speed,
-            speedHumanized: staticSpeed
-          });
+            payload = file;
         }
 
-        this._emitter.emit(uploadingFile);
-      }
-    };
-
-    xhr.upload.onabort = (e: Event) => {
-      uploadingFile.setAbort();
-      this._emitter.emit(uploadingFile);
-    };
-
-    xhr.upload.onerror = (e: Event) => {
-      uploadingFile.setError();
-      this._emitter.emit(uploadingFile);
-    };
-
-    xhr.onreadystatechange = () => {
-      if (xhr.readyState === XMLHttpRequest.DONE) {
-        uploadingFile.onFinished(
-            xhr.status,
-            xhr.statusText,
-            xhr.response
+        let uploadingFile = new UploadedFile(
+            this.generateRandomIndex(),
+            file.name,
+            file.size
         );
-        this.removeFileFromQueue(queueIndex);
-        this._emitter.emit(uploadingFile);
-      }
-    };
 
-    xhr.open(<string>this.opts.method, this.opts.url, true);
-    xhr.withCredentials = <boolean>this.opts.withCredentials;
+        let queueIndex = this._queue.indexOf(file);
 
-    if (this.opts.customHeaders) {
-      Object.keys(this.opts.customHeaders).forEach((key) => {
-        xhr.setRequestHeader(key, this.opts.customHeaders[key]);
-      });
+        let time: number = new Date().getTime();
+        let load = 0;
+        let speed = 0;
+        let speedHumanized: string|null = null;
+
+        let staticSpeed: string|null = "0KB/S";
+        xhr.upload.onprogress = (e: ProgressEvent) => {
+            if (e.lengthComputable) {
+                if (this.opts.calculateSpeed) {
+                    time = new Date().getTime() - time;
+                    load = e.loaded - load;
+                    speed = load / time * 1000;
+                    speed = parseInt(<any>speed, 10);
+                    speedHumanized = this.humanizeBytes(speed);
+                }
+
+                if (speedHumanized != '0 Byte') {
+                    staticSpeed = speedHumanized;
+                }
+
+                let percent = Math.round(e.loaded / e.total * 100);
+
+                if (speed === 0) {
+                    uploadingFile.setProgress({
+                        total: e.total,
+                        loaded: e.loaded,
+                        percent: percent,
+                        speedHumanized: staticSpeed
+                    });
+                } else {
+                    uploadingFile.setProgress({
+                        total: e.total,
+                        loaded: e.loaded,
+                        percent: percent,
+                        speed: speed,
+                        speedHumanized: staticSpeed
+                    });
+                }
+
+                this._emitter.emit(uploadingFile);
+            }
+        };
+
+        xhr.upload.onabort = () => {
+            uploadingFile.setAbort();
+            this._emitter.emit(uploadingFile);
+        };
+
+        xhr.upload.onerror = () => {
+            uploadingFile.setError();
+            this._emitter.emit(uploadingFile);
+        };
+
+        xhr.onreadystatechange = () => {
+            if (xhr.readyState === XMLHttpRequest.DONE) {
+                uploadingFile.onFinished(
+                    xhr.status,
+                    xhr.statusText,
+                    xhr.response
+                );
+                this.removeFileFromQueue(queueIndex);
+                this._emitter.emit(uploadingFile);
+            }
+        };
+
+        xhr.open(<string>this.opts.method, this.opts.url, true);
+        xhr.withCredentials = <boolean>this.opts.withCredentials;
+
+        if (this.opts.filenameHeader) {
+            xhr.setRequestHeader(this.opts.filenameHeader, file.name);
+        }
+
+        if (this.opts.customHeaders) {
+            Object.keys(this.opts.customHeaders).forEach((key) => {
+                xhr.setRequestHeader(key, this.opts.customHeaders[key]);
+            });
+        }
+
+        if (this.opts.authToken) {
+            xhr.setRequestHeader('Authorization', `${this.opts.authTokenPrefix} ${this.opts.authToken}`);
+        }
+
+        this._beforeEmitter.emit(uploadingFile);
+
+        // 监听取消事件
+        uploadingFile._cancelEmitter.subscribe((data: any) => {
+            console.log(data);
+            xhr.abort();
+        });
+
+        if (!uploadingFile.abort) {
+            xhr.send(payload);
+        } else {
+            this.removeFileFromQueue(queueIndex);
+        }
     }
 
-    if (this.opts.authToken) {
-      xhr.setRequestHeader('Authorization', `${this.opts.authTokenPrefix} ${this.opts.authToken}`);
+    addFilesToQueue(files: File[]): void {
+        this.clearQueue();
+        [].forEach.call(files, (file: File) => {
+            if (!this.inQueue(file)) {
+                this._queue.push(file);
+            }
+        });
+
+        if (this.opts.previewUrl) {
+            [].forEach.call(files, (file: File) => this.createFileUrl(file));
+        }
+
+        if (this.opts.autoUpload) {
+            this._queueEmitter.emit(this._queue);
+            this.uploadFilesInQueue();
+        }
     }
 
-    this._beforeEmitter.emit(uploadingFile);
-
-    // 监听取消事件
-    uploadingFile._cancelEmitter.subscribe((data: any) => {
-      xhr.abort();
-    })
-
-    if (!uploadingFile.abort) {
-      xhr.send(form);
-    } else {
-      this.removeFileFromQueue(queueIndex);
-    }
-  }
-
-  addFilesToQueue(files: File[]): void {
-    this.clearQueue();
-    [].forEach.call(files, (file: File, i: number) => {
-      if (!this.inQueue(file)) {
-        this._queue.push(file);
-      }
-    });
-
-    if (this.opts.previewUrl) {
-      [].forEach.call(files, (file: File) => this.createFileUrl(file));
+    createFileUrl(file: File) {
+        let reader: FileReader = new FileReader();
+        reader.addEventListener('load', () => {
+            this._previewEmitter.emit(reader.result);
+        });
+        reader.readAsDataURL(file);
     }
 
-    if (this.opts.autoUpload) {
-      this._queueEmitter.emit(this._queue);
-      this.uploadFilesInQueue();
+    removeFileFromQueue(i: number): void {
+        this._queue.splice(i, 1);
     }
-  }
 
-  createFileUrl(file: File) {
-    let reader: FileReader = new FileReader();
-    reader.addEventListener('load', () => {
-      this._previewEmitter.emit(reader.result);
-    });
-    reader.readAsDataURL(file);
-  }
-
-  removeFileFromQueue(i: number): void {
-    this._queue.splice(i, 1);
-  }
-
-  clearQueue(): void {
-    this._queue = [];
-  }
-
-  getQueueSize(): number {
-    return this._queue.length;
-  }
-
-  inQueue(file: any): boolean {
-    let fileInQueue = this._queue.filter((f) => {
-      return f === file;
-    });
-    return fileInQueue.length ? true : false;
-  }
-
-  generateRandomIndex(): string {
-    return Math.random().toString(36).substring(7);
-  }
-
-  humanizeBytes(bytes: number): string {
-    if (bytes === 0) {
-      return '0 Byte';
+    clearQueue(): void {
+        this._queue = [];
     }
-    let k = 1024;
-    const sizes: string[] = ['Bytes', 'KB', 'MB', 'GB', 'TB', 'PB'];
-    let i: number = Math.floor(Math.log(bytes) / Math.log(k));
 
-    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i] + '/s';
-  }
+    getQueueSize(): number {
+        return this._queue.length;
+    }
+
+    inQueue(file: any): boolean {
+        let fileInQueue = this._queue.filter((f) => {
+            return f === file;
+        });
+        return !!fileInQueue.length;
+    }
+
+    generateRandomIndex(): string {
+        return Math.random().toString(36).substring(7);
+    }
+
+    humanizeBytes(bytes: number): string {
+        if (bytes === 0) {
+            return '0 Byte';
+        }
+        let k = 1024;
+        const sizes: string[] = ['Bytes', 'KB', 'MB', 'GB', 'TB', 'PB'];
+        let i: number = Math.floor(Math.log(bytes) / Math.log(k));
+
+        return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i] + '/s';
+    }
 }
 
 export const NgUploaderServiceProvider: Provider = {
-  provide: NgUploaderService, useClass: NgUploaderService
+    provide: NgUploaderService, useClass: NgUploaderService
 };
