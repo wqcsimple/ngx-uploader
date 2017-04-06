@@ -6,7 +6,6 @@ import {UploadedFile} from '../classes/uploaded-file.class';
 export class NgUploaderService {
     _queue: any[];
     _emitter: EventEmitter<any>;
-    _queueEmitter: EventEmitter<any>;
     _previewEmitter: EventEmitter<any>;
     _beforeEmitter: EventEmitter<any>;
     opts: NgUploaderOptions;
@@ -14,7 +13,6 @@ export class NgUploaderService {
     constructor() {
         this._queue = [];
         this._emitter = new EventEmitter<any>();
-        this._queueEmitter = new EventEmitter<any>();
         this._previewEmitter = new EventEmitter<any>();
         this._beforeEmitter = new EventEmitter<any>();
     }
@@ -34,9 +32,12 @@ export class NgUploaderService {
 
     uploadFile(file: File): void {
         let xhr = new XMLHttpRequest();
-        let payload: FormData | File;
+        let payload: FormData | File | {};
 
-        if (this.opts.multipart) {
+        if (this.opts.plainJson) {
+            payload = JSON.stringify(this.opts.data)
+        }
+        else if (this.opts.multipart) {
             let form = new FormData();
             Object.keys(this.opts.data).forEach(k => {
                 form.append(k, this.opts.data[k]);
@@ -59,15 +60,16 @@ export class NgUploaderService {
         let time: number = new Date().getTime();
         let load = 0;
         let speed = 0;
-        let speedHumanized: string|null = null;
+        let speedHumanized: string | null = null;
 
-        let staticSpeed: string|null = "0KB/S";
+        let staticSpeed: string | null = "0KB/S";
         xhr.upload.onprogress = (e: ProgressEvent) => {
             if (e.lengthComputable) {
                 if (this.opts.calculateSpeed) {
-                    time = new Date().getTime() - time;
+                    const diff = new Date().getTime() - time;
+                    time += diff;
                     load = e.loaded - load;
-                    speed = load / time * 1000;
+                    speed = load / diff * 1000;
                     speed = parseInt(<any>speed, 10);
                     speedHumanized = this.humanizeBytes(speed);
                 }
@@ -77,7 +79,6 @@ export class NgUploaderService {
                 }
 
                 let percent = Math.round(e.loaded / e.total * 100);
-
                 if (speed === 0) {
                     uploadingFile.setProgress({
                         total: e.total,
@@ -166,7 +167,6 @@ export class NgUploaderService {
         }
 
         if (this.opts.autoUpload) {
-            this._queueEmitter.emit(this._queue);
             this.uploadFilesInQueue();
         }
     }
@@ -195,7 +195,7 @@ export class NgUploaderService {
         let fileInQueue = this._queue.filter((f) => {
             return f === file;
         });
-        return !!fileInQueue.length;
+        return fileInQueue.length ? true : false;
     }
 
     generateRandomIndex(): string {
