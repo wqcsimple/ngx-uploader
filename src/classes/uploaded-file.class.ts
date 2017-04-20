@@ -1,5 +1,6 @@
 import {EventEmitter} from "@angular/core";
 export class UploadedFile {
+  xhr: XMLHttpRequest | undefined;
   id: string;
   status: number;
   statusText: string;
@@ -16,7 +17,8 @@ export class UploadedFile {
   speedAverageHumanized: string|null;
   _cancelEmitter: EventEmitter<any>;
 
-  constructor(id: string, originalName: string, size: number) {
+  constructor(id: string, originalName: string, size: number, xhr?: XMLHttpRequest) {
+    this.xhr = xhr;
     this.id = id;
     this.originalName = originalName;
     this.size = size;
@@ -35,6 +37,12 @@ export class UploadedFile {
     this.speedAverage = 0;
     this.speedAverageHumanized = null;
     this._cancelEmitter = new EventEmitter<any>();
+  }
+
+  abortUpload(){
+    if (this.xhr) {
+      this.xhr.abort();
+    }
   }
 
   setProgress(progress: Object): void {

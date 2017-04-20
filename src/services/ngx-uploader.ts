@@ -23,9 +23,7 @@ export class NgUploaderService {
 
     uploadFilesInQueue(): void {
         this._queue.forEach((file) => {
-            if (file.uploading) {
-                return;
-            }
+            if (file.uploading) { return; }
             this.uploadFile(file);
         });
     };
@@ -52,7 +50,8 @@ export class NgUploaderService {
         let uploadingFile = new UploadedFile(
             this.generateRandomIndex(),
             file.name,
-            file.size
+            file.size,
+            xhr
         );
 
         let queueIndex = this._queue.indexOf(file);
